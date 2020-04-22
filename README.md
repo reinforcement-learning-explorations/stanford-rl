@@ -1,4 +1,4 @@
-# STANFORD-RL
+# Policy-Iteration
 ### __QUESTIONS?__
 ---
 <ol style="list-style-type:lower-roman;">
