@@ -1,12 +1,15 @@
 # MDP Value Iteration and Policy Iteration
 
+import random
 import numpy as np
 import gym
 from gym import wrappers
 import time
 from lake_envs import *
 
-import os, sys, getopt
+import os
+import sys
+import getopt
 
 
 def main(argv):
@@ -68,12 +71,23 @@ def policy_evaluation(P, nS, nA, policy, gamma=0.9, tol=1e-3):
                     the value of state s
     """
 
-    value_function = np.zeros(nS)
+    value_fn_updated = np.zeros(nS)
+    max_diff = np.Infinity
 
-    ############################
-    # YOUR IMPLEMENTATION HERE #
-    ############################
-    return value_function
+    # terminal states have p(self)=1 & r=0
+    # totally rethink this, maybe start out with a random walk?
+    # there is something wrong with my mechanics, even this should propogate values throughout
+    while max_diff >= tol:
+        value_fn = value_fn_updated.copy()
+        value_fn_updated[:] = 0
+        max_diff = 0
+        for state in P:
+            for p, next_state, reward, terminal in P[state][policy[state]]:
+                value_fn_updated[state] += p * (reward +
+                                                gamma * value_fn[next_state])
+            if (abs(value_fn_updated[state] - value_fn[state]) > max_diff):
+                max_diff = value_fn_updated[state]
+    return value_fn_updated
 
 
 def policy_improvement(P, nS, nA, value_from_policy, policy, gamma=0.9):
@@ -95,13 +109,21 @@ def policy_improvement(P, nS, nA, value_from_policy, policy, gamma=0.9):
                     in that state according to the environment dynamics and the
                     given value function.
     """
+    policy_changed = False
+    policy_update = np.zeros(nS, dtype='int')
 
-    new_policy = np.zeros(nS, dtype='int')
-
-    ############################
-    # YOUR IMPLEMENTATION HERE #
-    ############################
-    return new_policy
+    for state in P:
+        max_reward = -np.Infinity
+        for action in P[state]:
+            p, next_state, reward, terminal = P[state][action][0]
+            if (p * (reward + gamma * value_from_policy[next_state])) > max_reward:
+                max_reward = p * (reward + gamma*value_from_policy[next_state])
+                policy_update[state] = action
+            # elif (p * (reward + gamma * value_from_policy[next_state])) == max_reward:
+            #     policy_update[state] = random.choice((action, policy_update[state]))
+        if not policy_changed and (policy_update[state] != policy[state]):
+            policy_changed = True
+    return policy_update, policy_changed
 
 
 def policy_iteration(P, nS, nA, gamma=0.9, tol=10e-3):
@@ -124,11 +146,19 @@ def policy_iteration(P, nS, nA, gamma=0.9, tol=10e-3):
 
     value_function = np.zeros(nS)
     policy = np.zeros(nS, dtype=int)
+    policy_changed = True
 
-    ############################
-    # YOUR IMPLEMENTATION HERE #
+    # psuedo random policy init: pie(a|s)
+    for i in range(nS):
+        policy[i] = i % nA
 
-    ############################
+    while policy_changed:
+        value_fn = policy_evaluation(P, nS, nA, policy, gamma, tol)
+        policy_update, policy_changed = policy_improvement(
+            P, nS, nA, value_fn, policy, gamma)
+        if policy_changed:
+            policy = policy_update.copy()
+
     return value_function, policy
 
 
@@ -173,7 +203,6 @@ def render_single(env, policy, max_steps=100):
             The action to take at a given state
     """
     global video_output
-    print(video_output)
     if video_output:
         file_path = os.path.join("./videos")
         wrapped_env = gym.wrappers.Monitor(env,
@@ -200,8 +229,10 @@ def render_single(env, policy, max_steps=100):
             max_steps))
     else:
         print("Episode reward: %f" % episode_reward)
-    if video_output: wrapped_env.close()
-    else: env.render()
+    if video_output:
+        wrapped_env.close()
+    else:
+        env.render()
     env.close()
 
 
@@ -221,7 +252,7 @@ if __name__ == "__main__":
     V_pi, p_pi = policy_iteration(env.P, env.nS, env.nA, gamma=0.9, tol=1e-3)
     render_single(env, p_pi, 100)
 
-    print("\n" + "-" * 25 + "\nBeginning Value Iteration\n" + "-" * 25)
+    # print("\n" + "-" * 25 + "\nBeginning Value Iteration\n" + "-" * 25)
 
-    V_vi, p_vi = value_iteration(env.P, env.nS, env.nA, gamma=0.9, tol=1e-3)
-    render_single(env, p_vi, 100)
+    # V_vi, p_vi = value_iteration(env.P, env.nS, env.nA, gamma=0.9, tol=1e-3)
+    # render_single(env, p_vi, 100)
