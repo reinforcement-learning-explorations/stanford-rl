@@ -74,19 +74,18 @@ def policy_evaluation(P, nS, nA, policy, gamma=0.9, tol=1e-3):
     value_fn_updated = np.zeros(nS)
     max_diff = np.Infinity
 
-    # terminal states have p(self)=1 & r=0
-    # totally rethink this, maybe start out with a random walk?
-    # there is something wrong with my mechanics, even this should propogate values throughout
     while max_diff >= tol:
         value_fn = value_fn_updated.copy()
         value_fn_updated[:] = 0
         max_diff = 0
         for state in P:
+            # why iterate below? bc each action may have a list of possible outcomes in a stochastic environment
+            q_value = 0
             for p, next_state, reward, terminal in P[state][policy[state]]:
-                value_fn_updated[state] += p * (reward +
-                                                gamma * value_fn[next_state])
-            if (abs(value_fn_updated[state] - value_fn[state]) > max_diff):
-                max_diff = value_fn_updated[state]
+                q_value += p * (reward + gamma * value_fn[next_state])
+            if (abs(q_value - value_fn[state]) > max_diff):
+                max_diff = q_value
+            value_fn_updated[state] = q_value
     return value_fn_updated
 
 
@@ -115,12 +114,12 @@ def policy_improvement(P, nS, nA, value_from_policy, policy, gamma=0.9):
     for state in P:
         max_reward = -np.Infinity
         for action in P[state]:
-            p, next_state, reward, terminal = P[state][action][0]
-            if (p * (reward + gamma * value_from_policy[next_state])) > max_reward:
-                max_reward = p * (reward + gamma*value_from_policy[next_state])
+            q_value = 0
+            for p, next_state, reward, terminal in P[state][action]:
+                q_value += p * (reward + gamma * value_from_policy[next_state])
+            if q_value > max_reward:
+                max_reward = q_value
                 policy_update[state] = action
-            # elif (p * (reward + gamma * value_from_policy[next_state])) == max_reward:
-            #     policy_update[state] = random.choice((action, policy_update[state]))
         if not policy_changed and (policy_update[state] != policy[state]):
             policy_changed = True
     return policy_update, policy_changed
@@ -182,10 +181,27 @@ def value_iteration(P, nS, nA, gamma=0.9, tol=1e-3):
 
     value_function = np.zeros(nS)
     policy = np.zeros(nS, dtype=int)
-    ############################
-    # YOUR IMPLEMENTATION HERE #
+    max_diff = np.Infinity
 
-    ############################
+    while max_diff > tol:
+        max_diff = -np.Infinity
+        for state in P:
+            max_reward = -np.Infinity
+            for action in P[state]:
+                q_value = 0
+                for p, next_state, reward, terminal in P[state][action]:
+                    q_value += p * (reward + gamma * value_function[next_state])
+                if q_value > max_reward:
+                    max_reward = q_value
+            old = value_function[state]
+            value_function[state] = max(max_reward, value_function[state])
+            if abs(old - value_function[state]) > max_diff:
+                max_diff = abs(old - value_function[state])
+
+    # given a policy & a value_fn, return a greedy policy based on the value_fn & a boolean == did_the_policy_change?
+    policy, policy_changed = policy_improvement(
+        P, nS, nA, value_function, policy, gamma)
+
     return value_function, policy
 
 
@@ -239,20 +255,21 @@ def render_single(env, policy, max_steps=100):
 # Edit below to run policy and value iteration on different environments and
 # visualize the resulting policies in action!
 # You may change the parameters in the functions below
+# TODO: Implement all of the algorithms using only matrices
 if __name__ == "__main__":
     video_output = True
     main(sys.argv[1:])
 
     # comment/uncomment these lines to switch between deterministic/stochastic environments
-    env = gym.make("Deterministic-4x4-FrozenLake-v0")
-    # env = gym.make("Stochastic-4x4-FrozenLake-v0")
+    # env = gym.make("Deterministic-4x4-FrozenLake-v0")
+    env = gym.make("Stochastic-4x4-FrozenLake-v0")
 
     print("\n" + "-" * 25 + "\nBeginning Policy Iteration\n" + "-" * 25)
 
     V_pi, p_pi = policy_iteration(env.P, env.nS, env.nA, gamma=0.9, tol=1e-3)
     render_single(env, p_pi, 100)
 
-    # print("\n" + "-" * 25 + "\nBeginning Value Iteration\n" + "-" * 25)
+    print("\n" + "-" * 25 + "\nBeginning Value Iteration\n" + "-" * 25)
 
-    # V_vi, p_vi = value_iteration(env.P, env.nS, env.nA, gamma=0.9, tol=1e-3)
-    # render_single(env, p_vi, 100)
+    V_vi, p_vi = value_iteration(env.P, env.nS, env.nA, gamma=0.9, tol=1e-3)
+    render_single(env, p_vi, 100)
