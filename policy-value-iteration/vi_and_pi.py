@@ -109,7 +109,7 @@ def policy_improvement(P, nS, nA, value_from_policy, policy, gamma=0.9):
                     given value function.
     """
     policy_changed = False
-    policy_update = np.zeros(nS, dtype='int')
+    policy_update = np.zeros(nS, dtype=int)
 
     for state in P:
         max_reward = -np.Infinity
@@ -194,7 +194,7 @@ def value_iteration(P, nS, nA, gamma=0.9, tol=1e-3):
                 if q_value > max_reward:
                     max_reward = q_value
             old = value_function[state]
-            value_function[state] = max(max_reward, value_function[state])
+            value_function[state] = max_reward
             if abs(old - value_function[state]) > max_diff:
                 max_diff = abs(old - value_function[state])
 
@@ -264,10 +264,10 @@ if __name__ == "__main__":
     # env = gym.make("Deterministic-4x4-FrozenLake-v0")
     env = gym.make("Stochastic-4x4-FrozenLake-v0")
 
-    print("\n" + "-" * 25 + "\nBeginning Policy Iteration\n" + "-" * 25)
+    # print("\n" + "-" * 25 + "\nBeginning Policy Iteration\n" + "-" * 25)
 
-    V_pi, p_pi = policy_iteration(env.P, env.nS, env.nA, gamma=0.9, tol=1e-3)
-    render_single(env, p_pi, 100)
+    # V_pi, p_pi = policy_iteration(env.P, env.nS, env.nA, gamma=0.9, tol=1e-3)
+    # render_single(env, p_pi, 100)
 
     print("\n" + "-" * 25 + "\nBeginning Value Iteration\n" + "-" * 25)
 
